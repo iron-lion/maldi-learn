@@ -1,6 +1,6 @@
 """Preprocessing using TOpological Peak Filtering (TOPF)."""
 from sklearn.base import TransformerMixin
-from topf import PersistenceTransformer
+from .topf import PersistenceTransformer
 from typing import List
 
 from ..data import MaldiTofSpectrum

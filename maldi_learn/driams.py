@@ -5,7 +5,7 @@ exploration classes and loaders.
 """
 
 import collections
-import dotenv
+#import dotenv
 import hashlib
 import os
 import itertools
@@ -29,7 +29,7 @@ from maldi_learn.filters import DRIAMSFilter
 
 # Pulls in the environment variables in order to simplify the access to
 # the root directory.
-dotenv.load_dotenv()
+#dotenv.load_dotenv()
 
 # Root directory for the DRIAMS data set. Should contain additional
 # folders for each site and each year. The variable is just used as
@@ -262,8 +262,8 @@ class DRIAMSDatasetExplorer:
                 f'{year}_clean.csv'
         )
 
-        df = pd.read_csv(path, low_memory=False)
-        antibiotics = [c for c in df.columns if not c[0].islower()]
+        df = pd.read_csv(path, low_memory=False, nrows=1)
+        antibiotics = [c for c in df.columns if c not in _metadata_columns]
         antibiotics = [a for a in antibiotics if 'Unnamed' not in a]
 
         return sorted(antibiotics)
@@ -451,6 +451,7 @@ def load_driams_dataset(
     spectra_type='preprocessed',
     on_error='raise',
     id_suffix='clean',
+    spectra_suffix=None,
     extra_filters=[],
     **kwargs,
 ):
@@ -600,7 +601,10 @@ def load_driams_dataset(
         codes = metadata.code
 
         spectra_files = [
-            os.path.join(path_X, f'{code}.txt') for code in codes
+            os.path.join(path_X, f'{code}{spectra_suffix}') \
+            if spectra_suffix is not None \
+            else os.path.join(path_X, f'{code}') \
+            for code in codes
         ]
 
         spectra = [
@@ -613,6 +617,7 @@ def load_driams_dataset(
         ]
 
         metadata = metadata[~metadata['code'].isin(missing_codes)]
+        
         spectra = [
             s for s in spectra if s is not None
         ]
@@ -666,7 +671,7 @@ def _load_metadata(
     if not _check_id_file(filename):
         raise RuntimeError(f'ID file {filename} is invalid. Please check '
                            f'whether it contains all required columns.')
-
+    
     metadata = pd.read_csv(
                     filename,
                     low_memory=False,
@@ -687,6 +692,7 @@ def _load_metadata(
             )
 
         metadata = metadata.query('species == @species')
+
 
     # Check existence of each antibiotic prior to re-indexing the data
     # frame. We do not want to return invalid data frames, even though
@@ -719,6 +725,7 @@ def _load_metadata(
     metadata = metadata.reindex(
         columns=metadata_columns_available + antibiotics
     )
+    
     metadata = metadata[metadata_columns_available + antibiotics]
 
     n_antibiotics = len(antibiotics)
@@ -750,7 +757,7 @@ def _merge_years(all_spectra, all_metadata):
     metadata = pd.concat([df for df in all_metadata.values()])
     spectra = [s for s in itertools.chain.from_iterable(all_spectra.values())]
 
-    assert sum(metadata.duplicated(subset=['code'])) == 0, \
-        'Duplicated codes in different years.'
+    #assert sum(metadata.duplicated(subset=['code'])) == 0, \
+    #    'Duplicated codes in different years.'
 
     return spectra, metadata

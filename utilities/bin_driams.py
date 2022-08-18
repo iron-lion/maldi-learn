@@ -6,8 +6,10 @@ large number of downstream classification tasks.
 """
 
 import argparse
-import dotenv
 import os
+import sys
+sys.path.insert(0, "./maldi-learn")
+
 
 import pandas as pd
 
@@ -17,10 +19,20 @@ from maldi_learn.driams import load_driams_dataset
 
 from maldi_learn.vectorization import BinningVectorizer
 
-from tqdm import tqdm
+try:
+    ipy_str = str(type(get_ipython()))
+    if 'zmqshell' in ipy_str:
+        from tqdm import tqdm_notebook as tqdm
+    if 'terminal' in ipy_str:
+        from tqdm import tqdm
+except:
+    if sys.stderr.isatty():
+        from tqdm import tqdm
+    else:
+        def tqdm(iterable, **kwargs):
+            return iterable
 
-dotenv.load_dotenv()
-DRIAMS_ROOT = os.getenv('DRIAMS_ROOT')
+DRIAMS_ROOT = './data/umg/'
 
 
 if __name__ == '__main__':
@@ -29,13 +41,13 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '-s', '--site',
-        default='DRIAMS-A',
+        default='./',
         type=str,
         help='Site to pre-process')
 
     parser.add_argument(
         '-y', '--years',
-        default=['2015', '2016', '2017', '2018'],
+        default=['2021'],
         type=str,
         nargs='+',
         help='Years to pre-process'
@@ -54,7 +66,8 @@ if __name__ == '__main__':
     # pre-process *all* the spectra.
     explorer = DRIAMSDatasetExplorer(DRIAMS_ROOT)
     antibiotics = explorer.available_antibiotics(args.site)
-
+    print(explorer.root)
+    print(antibiotics)
     # Process each year separately, because that simplifies assigning
     # the output files.
     for year in tqdm(args.years, desc='Year'):
@@ -81,7 +94,7 @@ if __name__ == '__main__':
             f'binned_{args.bins}',
             year
         )
-
+        print(output_directory)
         os.makedirs(output_directory, exist_ok=True)
 
         bv = BinningVectorizer(
@@ -98,7 +111,7 @@ if __name__ == '__main__':
                                    desc='Spectrum'):
             output_file = os.path.join(
                 output_directory,
-                f'{code}.txt'
+                f'{code}'
             )
 
             # Might change this behaviour in the future, but for now,
@@ -108,7 +121,7 @@ if __name__ == '__main__':
 
             # This has the added advantage that we now *see* whenever
             # a new spectrum is being stored.
-            tqdm.write(code)
+            #tqdm.write(code)
 
             X = bv.fit_transform([spectrum])[0]
 
